@@ -1,0 +1,16 @@
+# Qase API clients
+qase-api-client>=2.0.1
+qase-api-v2-client>=2.0.0
+
+# HTTP
+requests
+certifi
+urllib3>=2.2.3          # transitive via requests, floor pinned deliberately
+
+# Handling HTML inside TestRail case content
+beautifulsoup4
+html2text
+
+# Statistics export
+pandas
+openpyxl                # pandas engine for the .xlsx output
