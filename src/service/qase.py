@@ -41,11 +41,11 @@ from qase.api_client_v1.exceptions import ApiException
 
 
 # The public cloud. Any other host is a dedicated cluster, which Qase serves at
-# api-<host> and app-<host> rather than api.<host> and app.<host>. That single
-# fact is everything the old qase.dedicated_cluster flag encoded, and it is
-# already implied by qase.host, so the flag was removed rather than asking a
-# customer to restate it. A dedicated cluster is also slower, so it takes
-# smaller pages and a pause between chunks (see entities/cases.py).
+# api-<host> and app-<host> rather than api.<host> and app.<host>. That fact is
+# implied by qase.host, so there is no separate flag for it: a boolean would
+# only restate the host, and reads as "I am on a paid plan", which on the public
+# cloud yields the unresolvable api-qase.io. A dedicated cluster is also slower,
+# so it takes smaller pages and a pause between chunks (see entities/cases.py).
 _PUBLIC_CLOUD_HOST = 'qase.io'
 
 

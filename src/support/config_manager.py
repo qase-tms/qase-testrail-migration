@@ -12,9 +12,9 @@ class ConfigManager:
     def load_config(self):
         """Load config.json, failing loudly if it is missing or malformed.
 
-        This used to swallow both cases and leave self.config empty, so a
-        missing file surfaced as a 401 deep inside the run instead of an
-        error at startup.
+        Both cases raise rather than leaving self.config empty, so a missing or
+        malformed file is an error at startup instead of a 401 deep inside the
+        run.
         """
         if not os.path.exists(self.config_file):
             raise FileNotFoundError(
