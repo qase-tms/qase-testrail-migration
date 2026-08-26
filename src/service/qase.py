@@ -40,27 +40,48 @@ from datetime import datetime
 from qase.api_client_v1.exceptions import ApiException
 
 
+# The public cloud. Any other host is a dedicated cluster, which Qase serves at
+# api-<host> and app-<host> rather than api.<host> and app.<host>. That single
+# fact is everything the old qase.dedicated_cluster flag encoded, and it is
+# already implied by qase.host, so the flag was removed rather than asking a
+# customer to restate it. A dedicated cluster is also slower, so it takes
+# smaller pages and a pause between chunks (see entities/cases.py).
+_PUBLIC_CLOUD_HOST = 'qase.io'
+
+
+def is_dedicated_cluster(host: str) -> bool:
+    return bool(host) and str(host).strip().lower() != _PUBLIC_CLOUD_HOST
+
+
+def _qase_url(config, subdomain: str) -> str:
+    host = str(config.get('qase.host') or _PUBLIC_CLOUD_HOST).strip()
+    scheme = 'http://' if config.get('qase.ssl') is False else 'https://'
+    delimiter = '-' if is_dedicated_cluster(host) else '.'
+    return f'{scheme}{subdomain}{delimiter}{host}'
+
+
+def qase_api_url(config) -> str:
+    """Base URL for the Qase REST API, derived from qase.host."""
+    return _qase_url(config, 'api')
+
+
+def qase_app_url(config) -> str:
+    """Base URL for the Qase web app, derived from qase.host."""
+    return _qase_url(config, 'app')
+
+
 class QaseService:
     def __init__(self, config: ConfigManager, logger: Logger):
         self.config = config
         self.logger = logger
 
-        ssl = 'http://'
-        if config.get('qase.ssl') is None or config.get('qase.ssl'):
-            ssl = 'https://'
-        
-        # Determine delimiter: use '.' for qase.io (cloud), '-' for enterprise custom domains
         main_host = config.get('qase.host')
-        delimiter = '.'
-        # Only use '-' delimiter for enterprise if host is NOT qase.io (custom enterprise domain)
-        if config.get('qase.dedicated_cluster') and main_host and main_host != 'qase.io':
-            delimiter = '-'
+        api_base = qase_api_url(config)
+        api_host_v1 = f'{api_base}/v1'
+        api_host_v2 = f'{api_base}/v2'
 
-        api_host_v1 = f'{ssl}api{delimiter}{main_host}/v1'
-        api_host_v2 = f'{ssl}api{delimiter}{main_host}/v2'
-        
         if self.logger:
-            self.logger.log(f'[Qase Service] Config - host: {main_host}, dedicated_cluster: {config.get("qase.dedicated_cluster")}, delimiter: {delimiter}')
+            self.logger.log(f'[Qase Service] Config - host: {main_host}, dedicated cluster: {is_dedicated_cluster(main_host)}')
             self.logger.log(f'[Qase Service] API v1 URL: {api_host_v1}')
             self.logger.log(f'[Qase Service] API v2 URL: {api_host_v2}')
 

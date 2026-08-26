@@ -189,16 +189,10 @@ def replace_testrail_case_links(text, project_code, config):
     # Extract domain from URL (e.g., "https://affinipay.testrail.net" -> "affinipay.testrail.net")
     testrail_domain = re.sub(r'^https?://', '', testrail_host)
     
-    # Build Qase app URL
-    ssl = 'https://' if (config.get('qase.ssl') is None or config.get('qase.ssl')) else 'http://'
-    main_host = config.get('qase.host') or 'qase.io'
-    
-    # Determine delimiter: use '.' for qase.io (cloud), '-' for enterprise custom domains
-    delimiter = '.'
-    if config.get('qase.dedicated_cluster') and main_host != 'qase.io':
-        delimiter = '-'
-    
-    qase_app_url = f'{ssl}app{delimiter}{main_host}'
+    # Build Qase app URL. Derived from qase.host, same rule as the API URL.
+    from ..service.qase import qase_app_url as _qase_app_url
+
+    qase_app_url = _qase_app_url(config)
     
     # Pattern 1: Match TestRail case links in markdown format with full URL
     # Matches: [C123456](https://{testrail_domain}/index.php?/cases/view/123456)

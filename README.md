@@ -94,9 +94,8 @@ Edit `config.json`. Every key below is read by the code, and every key the code 
 | Key | Required | Default | Meaning |
 |---|---|---|---|
 | `qase.api_token` | yes | | API token from **Workspace > API tokens** |
-| `qase.host` | yes | `qase.io` | Leave as-is unless you are on a dedicated cluster |
+| `qase.host` | yes | `qase.io` | Your Qase host. Leave as `qase.io` on the public cloud. On a dedicated cluster set it to your own host, for example `acme.qase.io`. The API URL, the app URL used for `refs` links, and the slower request pacing a dedicated cluster needs are all derived from this |
 | `qase.ssl` | no | `true` | Use HTTPS |
-| `qase.dedicated_cluster` | no | `false` | Set to `true` only if Qase runs on your own dedicated cluster with its own hostname. Not related to the Qase Enterprise plan |
 | `qase.scim_token` | no | | Needed only for `users.create` or `groups.create` |
 | `qase.scim_host` | no | `app.qase.io` | |
 

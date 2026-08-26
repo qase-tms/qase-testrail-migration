@@ -4,7 +4,7 @@ import re
 import hashlib
 import time
 
-from ..service import QaseService, TestrailService
+from ..service import QaseService, TestrailService, is_dedicated_cluster
 from ..support import Logger, Mappings, ConfigManager as Config, Pools, format_links_as_markdown, convert_testrail_date_to_iso, convert_estimate_time_to_hours, html_to_markdown
 
 from qase.api_client_v1.models import TestStepCreate, TestCasebulkCasesInner
@@ -83,8 +83,9 @@ class Cases:
         
     async def import_cases_for_suite(self, suite_id):
         offset = 0
-        # Set limit based on enterprise setting: 20 for enterprise, 100 for cloud
-        limit = 20 if self.config.get('qase.dedicated_cluster') else 100
+        # A dedicated cluster is slower than the public cloud, so it takes smaller
+        # pages. Derived from qase.host, not from a flag the customer has to set.
+        limit = 20 if is_dedicated_cluster(self.config.get('qase.host')) else 100
         while True:
             count = await self.process_cases(suite_id, offset, limit)
             if count < limit:
@@ -107,7 +108,7 @@ class Cases:
                 if prepared_count != cases['size']:
                     self.logger.log(f'[{self.project["code"]}][Tests] Warning: Prepared {prepared_count} cases out of {cases["size"]} requested for suite {suite_id} (offset {offset})', 'warning')
                 if data:
-                    if self.config.get('qase.dedicated_cluster'):
+                    if is_dedicated_cluster(self.config.get('qase.host')):
                         time.sleep(5)  # To avoid hitting rate limits
                     status = await self.pools.qs(self.qase.create_cases, self.project['code'], data)
                     if status:
