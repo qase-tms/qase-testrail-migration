@@ -76,7 +76,7 @@ Reads a TestRail instance over its REST API and recreates the structure, test ca
 
 ## 5. Install
 
-Requires **Python 3.10 or newer**.
+Requires **Python 3.11 or newer.**.
 
 ```bash
 python3 -m venv .venv

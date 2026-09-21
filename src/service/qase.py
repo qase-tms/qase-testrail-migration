@@ -71,6 +71,18 @@ def qase_app_url(config) -> str:
 
 
 class QaseService:
+    # Max results per bulk-results call, v1 and v2 alike.
+    #
+    # Qase lowered the server-side bulk-results limit from 2000 to 200 to smooth
+    # load spikes. The generated client still validates client-side at 2000, so
+    # it will happily build a larger body that the API then rejects, and a single
+    # oversized run used to lose every one of its results that way. Sit at the
+    # new limit instead.
+    #
+    # The cost is extra HTTP calls, not extra data, and Qase writes were never
+    # the bottleneck here; source reads are.
+    _RESULT_BULK_CHUNK = 200
+
     def __init__(self, config: ConfigManager, logger: Logger):
         self.config = config
         self.logger = logger
@@ -636,18 +648,25 @@ class QaseService:
             if len(res) > 0:
                 api_results = ResultsApi(self.client)
                 self.logger.log(f'Sending {len(res)} results to Qase')
-                try:
-                    api_results.create_result_bulk(
-                        code=qase_code,
-                        id=int(qase_run_id),
-                        result_create_bulk=ResultCreateBulk(
-                            results=res
-                        )
+                total_chunks = -(-len(res) // self._RESULT_BULK_CHUNK)
+                for start in range(0, len(res), self._RESULT_BULK_CHUNK):
+                    chunk = res[start:start + self._RESULT_BULK_CHUNK]
+                    label = (
+                        f' (chunk {start // self._RESULT_BULK_CHUNK + 1}/{total_chunks})'
+                        if total_chunks > 1 else ''
                     )
-                    self.logger.log(f'{len(res)} results sent to Qase')
-                except Exception as e:
-                    self.logger.log(f'Exception when calling ResultsApi->create_result_bulk: {e}', 'error')
-                    self.logger.log('Data being sent to API: %s' % json.dumps(res, indent=2, default=str), 'error')
+                    try:
+                        api_results.create_result_bulk(
+                            code=qase_code,
+                            id=int(qase_run_id),
+                            result_create_bulk=ResultCreateBulk(
+                                results=chunk
+                            )
+                        )
+                        self.logger.log(f'{len(chunk)} results sent to Qase{label}')
+                    except Exception as e:
+                        self.logger.log(f'Exception when calling ResultsApi->create_result_bulk{label}: {e}', 'error')
+                        self.logger.log('Data being sent to API: %s' % json.dumps(chunk, indent=2, default=str), 'error')
 
     def send_bulk_results_v2(self, tr_run, results, qase_run_id, qase_code, mappings, cases_map):
         """
@@ -726,19 +745,23 @@ class QaseService:
                 api_results = ResultsApiV2(self.client_v2)
                 self.logger.log(f'Model: {json.dumps(res, indent=2, default=str)}')
                 self.logger.log(f'Sending {len(res)} results to Qase using API v2')
-                try:
-                    # Create bulk request
-                    bulk_request = CreateResultsRequestV2(results=res)
-                    
-                    api_results.create_results_v2(
-                        project_code=qase_code,
-                        run_id=int(qase_run_id),
-                        create_results_request_v2=bulk_request
+                total_chunks = -(-len(res) // self._RESULT_BULK_CHUNK)
+                for start in range(0, len(res), self._RESULT_BULK_CHUNK):
+                    chunk = res[start:start + self._RESULT_BULK_CHUNK]
+                    label = (
+                        f' (chunk {start // self._RESULT_BULK_CHUNK + 1}/{total_chunks})'
+                        if total_chunks > 1 else ''
                     )
-                    self.logger.log(f'{len(res)} results sent to Qase using API v2')
-                except Exception as e:
-                    self.logger.log(f'Exception when calling ResultsApiV2->create_results_v2: {e}', 'error')
-                    self.logger.log('Data being sent to API: %s' % json.dumps([r.to_dict() for r in res], indent=2, default=str), 'error')
+                    try:
+                        api_results.create_results_v2(
+                            project_code=qase_code,
+                            run_id=int(qase_run_id),
+                            create_results_request_v2=CreateResultsRequestV2(results=chunk),
+                        )
+                        self.logger.log(f'{len(chunk)} results sent to Qase using API v2{label}')
+                    except Exception as e:
+                        self.logger.log(f'Exception when calling ResultsApiV2->create_results_v2{label}: {e}', 'error')
+                        self.logger.log('Data being sent to API: %s' % json.dumps([r.to_dict() for r in chunk], indent=2, default=str), 'error')
 
     def prepare_result_steps(self, steps, status_map) -> list:
         allowed_statuses = ['passed', 'failed', 'blocked', 'skipped']
