@@ -92,6 +92,9 @@ class TestRailImporter:
         self.mappings.stats.print()
         self.mappings.stats.save(str(self.config.get('prefix')))
         self.mappings.stats.save_xlsx(str(self.config.get('prefix')))
+        print(f"\nqase-testrail-migration v{self.logger.version}")
+        if self.logger.log_file:
+            print(f"Full log: {self.logger.log_file}")
 
     def import_project_data(self, project):
         self.logger.print_group(f'Importing project: {project["name"]}'
